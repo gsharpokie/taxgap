@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tax Gap Simulator</title>
+<meta name="description" content="Set tax rates for billionaires, the rich, and everyone else, and see how much of the $2 trillion federal deficit your plan would close.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gsharpokie.github.io/taxgap/">
+<meta property="og:title" content="Who has to pay to close the gap?">
+<meta property="og:description" content="Set tax rates for billionaires, the rich, and everyone else, and see how much of the $2 trillion federal deficit your plan would close.">
+<meta property="og:image" content="https://gsharpokie.github.io/taxgap/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Who has to pay to close the gap? A meter showing how much of a $2.0 trillion deficit a tax plan raises, with settings for the goal and avoidance.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@gsharpokie">
+<meta name="twitter:title" content="Who has to pay to close the gap?">
+<meta name="twitter:description" content="Set tax rates for billionaires, the rich, and everyone else, and see how much of the $2 trillion federal deficit your plan would close.">
+<meta name="twitter:image" content="https://gsharpokie.github.io/taxgap/preview.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2315231f'/%3E%3Crect x='4' y='13' width='24' height='7' rx='2' fill='%23e3e8e3'/%3E%3Crect x='4' y='13' width='9' height='7' rx='2' fill='%236d3fa3'/%3E%3Crect x='12' y='13' width='7' height='7' fill='%231d8a8c'/%3E%3Crect x='25' y='10' width='2' height='13' fill='%23ffffff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a sticky ledger line (the gap meter) on top, one row per taxpayer group below, richest first. */
+:root{
+  --paper:#f3f5f1; --card:#ffffff; --ink:#15231f; --muted:#5a6b65; --rule:#d5dcd6;
+  --accent:#0d6b4f; --accent-soft:#dcefe6; --warn:#a4541a; --track:#e3e8e3;
+  --g-bil:#6d3fa3; --g-w01:#a77bd0; --g-top01:#0b5560; --g-p99:#1d8a8c; --g-p90:#58b39b;
+  --g-p80:#d9a531; --g-p50:#dd7c33; --g-p0:#c24f3c;
+  --display:"Bricolage Grotesque","Aptos","Segoe UI",system-ui,sans-serif;
+  --body:"Aptos","Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#101714; --card:#18221e; --ink:#e8efe9; --muted:#9db0a8; --rule:#2c3a34;
+    --accent:#5fd0a4; --accent-soft:#1c3a2f; --warn:#f0a868; --track:#26332e;
+    --g-bil:#b48be6; --g-w01:#8463b0; --g-top01:#3fb3c2; --g-p99:#2f9ea0; --g-p90:#6fc7ae;
+    --g-p80:#e6b84a; --g-p50:#ec9050; --g-p0:#e0705c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#101714; --card:#18221e; --ink:#e8efe9; --muted:#9db0a8; --rule:#2c3a34;
+  --accent:#5fd0a4; --accent-soft:#1c3a2f; --warn:#f0a868; --track:#26332e;
+  --g-bil:#b48be6; --g-w01:#8463b0; --g-top01:#3fb3c2; --g-p99:#2f9ea0; --g-p90:#6fc7ae;
+  --g-p80:#e6b84a; --g-p50:#ec9050; --g-p0:#e0705c;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px}
+header.intro{padding:28px 0 8px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(1.9rem,6vw,2.9rem);line-height:1.05;margin:0 0 10px;text-wrap:balance;letter-spacing:-0.01em}
+h2{font-family:var(--display);font-weight:600;font-size:1.3rem;margin:0;text-wrap:balance}
+.lede{max-width:62ch;margin:0;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+/* sticky meter */
+.meter{position:sticky;top:0;z-index:5;background:var(--paper);border-bottom:1px solid var(--rule);padding:10px 0 12px}
+.meter-top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px}
+.raised{font-family:var(--display);font-weight:800;font-size:1.55rem;line-height:1.1}
+.raised small{font-family:var(--body);font-weight:500;font-size:.85rem;color:var(--muted)}
+.status{font-weight:600;font-size:.92rem}
+.status.short{color:var(--warn)} .status.done{color:var(--accent)}
+.bar{position:relative;height:26px;background:var(--track);border-radius:4px;margin-top:8px;display:flex;overflow:hidden}
+.bar span{display:block;height:100%;transition:width .2s ease}
+.target{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+.bar-wrap{position:relative}
+.bar-cap{display:flex;justify-content:space-between;gap:12px;font-size:.78rem;color:var(--muted);margin-top:4px}
+@media (prefers-reduced-motion:reduce){.bar span{transition:none}}
+
+section{padding:22px 0 4px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.sec-head p{margin:0;color:var(--muted);max-width:65ch;font-size:.95rem}
+
+.controls{display:flex;flex-wrap:wrap;gap:16px 28px;background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:14px 16px}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{font-weight:700;font-size:.85rem;padding:0;margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{cursor:pointer}
+.chips input{position:absolute;opacity:0;pointer-events:none}
+.chips span,.btn{display:inline-block;border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:999px;padding:6px 12px;font:600 .85rem var(--body);cursor:pointer}
+.chips input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--card)}
+.chips input:focus-visible+span,.btn:focus-visible,input[type=range]:focus-visible,input[type=number]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn:hover{border-color:var(--accent)}
+.hint{margin:0 0 8px;font-size:.85rem;color:var(--muted);max-width:52ch}
+.hint.after{margin:8px 0 0}
+.rownote{grid-column:1 / -1;font-size:.82rem;color:var(--muted);border-top:1px solid var(--rule);padding-top:6px;margin-top:2px;max-width:70ch}
+.warnline{grid-column:1 / -1;font-size:.86rem;color:var(--warn);font-weight:600}
+.row.dim{background:transparent;border-style:dashed;border-left-style:solid;border-left-color:var(--rule)}
+.row.dim .base i{background:var(--rule)}
+.row.dim .rev{color:var(--muted)}
+.row .tag{display:none;font:600 .72rem var(--body);text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border:1px solid var(--rule);border-radius:999px;padding:1px 8px;margin-left:8px;vertical-align:2px}
+.row.dim .tag{display:inline-block}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--card)}
+.custom{display:none;align-items:center;gap:6px;margin-top:8px;font-size:.9rem}
+.custom.on{display:flex;flex-wrap:wrap}
+.chips.addon{margin-top:8px}
+.custom select{font:inherit;padding:4px 6px;border:1px solid var(--rule);border-radius:4px;background:var(--card);color:var(--ink);max-width:100%}
+.hint a{color:var(--accent)}
+.custom input{width:90px;font:inherit;padding:4px 6px;border:1px solid var(--rule);border-radius:4px;background:var(--card);color:var(--ink)}
+
+.rows{display:flex;flex-direction:column;gap:10px}
+.row{background:var(--card);border:1px solid var(--rule);border-left:6px solid var(--c);border-radius:8px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:4px 14px}
+.row h3{margin:0;font:700 1.02rem var(--body)}
+.who{color:var(--muted);font-size:.85rem;grid-column:1}
+.rev{grid-column:2;grid-row:1 / span 2;text-align:right;font-family:var(--display);font-weight:800;font-size:1.25rem;white-space:nowrap}
+.rev.neg{color:var(--warn)}
+.base{grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted)}
+.base i{display:block;height:6px;border-radius:3px;background:var(--c);min-width:2px}
+.slide{grid-column:1 / -1;display:flex;align-items:center;gap:10px}
+.slide input{flex:1;min-width:0;accent-color:var(--c);height:28px}
+.slide output{min-width:88px;text-align:right;font-weight:700}
+.effect{grid-column:1 / -1;font-size:.86rem;color:var(--muted);min-height:1.3em}
+
+.mix{background:var(--accent-soft);border-radius:8px;padding:14px 16px;margin-top:6px}
+.mix p{margin:0 0 6px;max-width:65ch}
+.mix p:last-child{margin:0}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:0;padding:0;list-style:none}
+.facts li{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:12px 14px;font-size:.93rem}
+.facts b{display:block;font-family:var(--display);font-size:1.35rem;line-height:1.15;margin-bottom:2px}
+ol.q{max-width:65ch;padding-left:1.2em;margin:0}
+ol.q li{margin-bottom:8px}
+.notes{font-size:.88rem;color:var(--muted);max-width:68ch}
+.notes li{margin-bottom:6px}
+.notes a{color:var(--accent)}
+section.limits{padding-bottom:28px}
+footer.site{border-top:1px solid var(--rule);padding:16px 0 32px;font-size:.88rem;color:var(--muted)}
+footer.site a{color:var(--accent)}
+.copyline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+#copied{font-size:.85rem;color:var(--accent)}
+@media (max-width:420px){.rev{font-size:1.1rem}.slide output{min-width:76px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="intro">
+    <h1>Who has to pay to close the gap?</h1>
+    <p class="lede">In the 2026 fiscal year, the U.S. federal government spent about $2.0 trillion more than it collected. Set a tax increase for each group below and watch how much of the gap your plan closes and who ends up paying for it.</p>
+  </header>
+</div>
+
+<main id="main">
+<div class="meter">
+  <div class="wrap">
+    <div class="meter-top" aria-live="polite">
+      <div class="raised num"><span id="net">$0</span> <small>raised per year</small></div>
+      <div class="status num" id="status"></div>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar" id="bar" role="img" aria-label="Revenue raised by group, against the target"></div>
+      <div class="target" id="target"></div>
+    </div>
+    <div class="bar-cap num"><span>$0</span><span id="capTarget"></span></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <section>
+    <div class="controls">
+      <fieldset>
+        <legend>Your goal</legend>
+        <div class="chips" id="goal">
+          <label><input type="radio" name="goal" id="goal-full" value="2000" checked><span>Close the deficit ($2.0 trillion)</span></label>
+          <label><input type="radio" name="goal" id="goal-half" value="1000"><span>Cut it in half ($1.0 trillion)</span></label>
+          <label><input type="radio" name="goal" id="goal-none" value="0"><span>Leave the deficit as is</span></label>
+        </div>
+        <div class="chips addon"><label><input type="checkbox" id="progOn"><span>+ Add a new program or tax cut</span></label></div>
+        <div id="progBox" hidden>
+          <p class="hint after">Pick a proposal or type your own cost. It is added on top of your deficit goal.</p>
+          <div class="custom on"><label for="progPick">Proposal:</label>
+            <select id="progPick"><option value="">Choose a common proposal…</option></select></div>
+          <div class="custom on"><label for="customAmt">Yearly cost, in billions: $</label><input type="number" id="customAmt" min="0" max="6000" step="1" value="0"></div>
+          <p class="hint after" id="progNote"></p>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>How much of their wealth taxes do you expect the rich to avoid (through legal loopholes or illegal evasion)?</legend>
+        <p class="hint">Wealthy people can move, restructure, or undervalue what they own to pay less. This setting adjusts tax revenue from wealth taxes to reflect that.</p>
+        <div class="chips" id="leak">
+          <label><input type="radio" name="leak" id="leak-0" value="0"><span>None</span></label>
+          <label><input type="radio" name="leak" id="leak-15" value="15" checked><span>Some (15%)</span></label>
+          <label><input type="radio" name="leak" id="leak-45" value="45"><span>Nearly half (45%)</span></label>
+          <label><input type="radio" name="leak" id="leak-70" value="70"><span>Most (70%)</span></label>
+        </div>
+        <p class="hint after" id="leakNote"></p>
+      </fieldset>
+      <fieldset>
+        <legend>Try a starting plan</legend>
+        <div class="chips">
+          <button class="btn" type="button" id="p-bil">Billionaires only</button>
+          <button class="btn" type="button" id="p-one">Top 1% only</button>
+          <button class="btn" type="button" id="p-broad">Broad base</button>
+          <button class="btn" type="button" id="p-reset">Reset</button>
+        </div>
+        <p class="hint after" id="planNote" role="status"></p>
+      </fieldset>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Tax wealth</h2>
+      <p>A yearly tax on the value of everything a household owns, minus debts. The U.S. doesn’t have this type of tax today. The slider is the percent of net worth collected as taxes each year.</p>
+    </div>
+    <div class="rows" id="wealthRows"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Tax income</h2>
+      <p>Each slider changes a group’s average federal tax rate (the share of its total income paid in federal taxes). Groups are ranked by family income, richest first. Slide left (below 0) to give a group a tax cut.</p>
+    </div>
+    <div class="rows" id="incomeRows"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Who pays in your plan</h2></div>
+    <div class="mix" id="mix"></div>
+    <div class="copyline"><button class="btn" type="button" id="copy">Copy my plan as text</button><span id="copied" role="status"></span></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Why the size of the group matters</h2>
+      <p>A tax raises money in proportion to what it taxes. These figures come from the same data that drive the sliders.</p>
+    </div>
+    <ul class="facts">
+      <li><b class="num">4 years</b>Seizing every dollar all 989 U.S. billionaires own ($8.4 trillion) would cover the 2026 deficit about four times. Then the money would be gone.</li>
+      <li><b class="num">55%</b>of all family income goes to the bottom 90% of families. The top 1% receives about 20%.</li>
+      <li><b class="num">3 million</b>business owners with fortunes averaging about $25 million, based on data from <cite>The Everywhere Millionaire</cite>. Together they hold more than 13 times the wealth of the Forbes 400.</li>
+      <li><b class="num">$19.6 trillion</b>held by the rest of the wealthiest 0.1% of households, more than twice the total amount that billionaires hold.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Questions to argue about</h2></div>
+    <ol class="q">
+      <li>Press “Billionaires only,” then push their wealth tax slider to its maximum. How much of the gap is left? What does that tell you about plans that only focus on billionaires?</li>
+      <li>Find a way to close the whole gap without touching the bottom 90% (the upper middle group or anyone below them). What rates did it take? Do you believe people would pay them?</li>
+      <li>Economists Owen Zidar and Eric Zwick argue that car dealers, dentists, and other local business owners hold far more combined wealth than billionaires and are more trusted in their communities. Most of them fall in the top 10% by income (the top three income sliders), and only the richest are reached by the “Rest of the wealthiest 0.1%” slider. If you were willing to tax this group more, how much could you raise? Why might these taxes be harder to pass than a tax on billionaires?</li>
+      <li>Move the “Middle (50th to 80th)” slider up two points. Compare the tax revenue with what each family would pay. Is that a good trade? Who gets to decide?</li>
+      <li>Switch wealth tax avoidance from “None” to “Most (70%).” How much does your plan shrink? What would the government need to do to keep that from happening?</li>
+      <li>Under “Your goal,” choose “Add a new program or tax cut.” Pick a proposal from the menu or enter the yearly cost of one you would add, and watch the goal grow. What would it take to pay for it on top of the deficit? Who would you ask to pay?</li>
+      <li>This page only raises taxes. Would you cut spending too? If so, what would you cut? How would that change who bears the cost?</li>
+    </ol>
+  </section>
+
+  <section class="limits">
+    <div class="sec-head"><h2>How this tool works and its limits</h2></div>
+    <ul class="notes">
+      <li><strong>The math is simple on purpose:</strong> Revenue = a group’s income (or wealth) × the tax rate you set. Real estimates from the Congressional Budget Office or the Joint Committee on Taxation model how people change their behavior, how taxes interact, and how the economy responds. Treat every number here as a rough illustration, not a forecast.</li>
+      <li><strong>Avoidance:</strong> The avoidance setting removes a share of revenue from the two wealth taxes. Its options come from estimates of Senator Elizabeth Warren’s wealth tax proposal. Economists Emmanuel Saez and Gabriel Zucman <a href="https://gabriel-zucman.eu/files/saez-zucman-responseto-summers-sarin.pdf">assumed 15% avoidance</a>, based on studies of wealth taxes in other countries. The <a href="https://budgetmodel.wharton.upenn.edu/issues/2019/12/12/senator-elizabeth-warrens-wealth-tax-projected-budgetary-and-economic-effects">Penn Wharton Budget Model</a> projected $4.8 trillion over 10 years with no avoidance, about $2.7 trillion in its middle estimate (roughly 45% less), and $1.4 trillion with “extreme avoidance” (roughly 70% less). Lawrence Summers and Natasha Sarin argued from estate tax data that a wealth tax would raise as little as, or less than, the worst-case avoidance scenarios. The avoidance setting doesn’t affect income taxes, but high earners do find ways to pay less when income tax rates rise. That means the income sliders show somewhat more than would really be collected.</li>
+      <li><strong>Wealth is a stock; income is a renewable flow:</strong> A wealth tax collects from the same pile every year, so high rates shrink the pile over time; if you apply a 25% tax to wealth, for instance, it would quickly deplete much of the pile. This page shows what the first year would look like.</li>
+      <li><strong>Slider limits:</strong> The wealth sliders stop at 25%; the income sliders run from 5 points below current tax rates to 30 points above. These are choices I made for this page. They sit well above actual proposals, which included top wealth tax rates up to 8%, so you can test more extreme plans. The sliders stop where the simple math becomes too unreliable to be useful even as an illustration. A caution appears when a wealth slider passes 8% or an income slider passes 15 points.</li>
+      <li><strong>Proposal costs:</strong> The costs in the proposal dropdown menu come from different groups and different years and aren’t adjusted to 2026 dollars. Ten-year estimates are divided by 10. Estimates of the same idea can differ widely depending on how the plan is designed and who’s counting. The source for each appears when you select it.</li>
+      <li><strong>Corporate taxes:</strong> Each group’s current tax rate includes its share of corporate income taxes, which Treasury assigns mostly to the families who own company stock; the top 10% of families pay about 71% of them. There’s no separate corporate tax slider, but because a corporate tax increase would fall mostly on the top income groups, you can approximate one with those sliders. For simplicity, I also leave out other ways to raise money, such as tariffs, a national sales tax, or a carbon tax.</li>
+      <li><strong>Deficit:</strong> $2.0 trillion for fiscal year 2026, from the <a href="https://www.cbo.gov/publication/61986">Congressional Budget Office’s Monthly Budget Review, November 2026</a>.</li>
+      <li><strong>Income groups and current tax rates:</strong> <a href="https://home.treasury.gov/system/files/131/Distribution-of-Tax-Burden-Current-Law-2025.pdf">U.S. Treasury, Office of Tax Analysis, Distribution Table 2025-001</a>, the most recent the Treasury has published. It predates the 2025 One Big Beautiful Bill Act tax changes, and incomes have increased since, so the income sliders slightly understate today’s dollars. “Federal taxes” includes income, payroll, corporate, excise, and estate taxes. Income thresholds are for a two-person family. Families are tax units, about 189 million in all.</li>
+      <li><strong>Billionaires:</strong> 989 people with $8.4 trillion, from the Forbes list of March 2026, as <a href="https://justthenews.com/nation/states/center-square/forbes-record-989-billionaires-are-us-88-are-texas">reported by The Center Square</a>. Other counts differ by date and method.</li>
+      <li><strong>Wealthiest 0.1%:</strong> nearly $28 trillion in the second quarter of 2026, from the Federal Reserve’s <a href="https://www.federalreserve.gov/releases/z1/dataviz/dfa">Distributional Financial Accounts</a> as <a href="https://fortune.com/2026/10/07/the-new-k-shaped-economy-wealthy/">analyzed by Fortune</a>. The “rest of the 0.1%” figure subtracts the Forbes billionaire total, which mixes two sources and is approximate.</li>
+      <li><strong>The book:</strong> Owen Zidar and Eric Zwick, <cite>The Everywhere Millionaire</cite> (Henry Holt, 2026). The 3 million and 13x figures are from the <a href="https://nextbigideaclub.com/magazine/richest-people-youve-never-heard-bookbite/61433/amp/">authors’ own summary</a>; also see <a href="https://www.npr.org/sections/planet-money/2026/09/14/g-s1-143041/the-powerful-millionaires-hiding-in-plain-sight">Planet Money’s coverage</a>. Their group is defined by business ownership and wealth, so it doesn’t map onto a single slider here; most of its members likely fall in the top 10% by income (the top three income sliders), and only the richest are reached by the “Rest of the wealthiest 0.1%” slider. That placement is an estimate, not a figure from the book.</li>
+      <li>Whether any group <em>should</em> pay more is a question of values. This page only shows how much each choice raises.</li>
+    </ul>
+  </section>
+</div>
+</main>
+<footer class="site">
+  <div class="wrap">Created by Gwen Sharp (<a href="https://x.com/gsharpokie">@gsharpokie</a>). Licensed under <a href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a>.</div>
+</footer>
+
+<script>
+(function(){
+  var DEFICIT = 2000; // $ billions, FY2026
+  // base in $ billions; n = number of people/households/families
+  var WEALTH = [
+    {id:'bil', name:'Billionaires', who:'989 people, average fortune $8.5 billion', base:8400, n:989, unit:'billionaire', max:25, step:0.5, leak:true, note:'Billionaires’ income is counted in the “Top 0.1% by income” group below. Most of their yearly gains are increases in the value of assets they haven’t sold, which aren’t taxed as income.'},
+    {id:'w01', name:'Rest of the wealthiest 0.1%', who:'about 135,000 households, average net worth about $145 million', base:19600, n:135000, unit:'household', max:25, step:0.5, leak:true}
+  ];
+  var INCOME = [
+    {id:'top01', name:'Top 0.1% by income', who:'190,000 families making $3.5 million or more', base:2207.5, n:0.19e6, cur:33.4},
+    {id:'p99', name:'Rest of the top 1%', who:'1.7 million families making $743,000 to $3.5 million', base:2249.3, n:1.7e6, cur:29.9},
+    {id:'p90', name:'Next 9% (90th to 99th percentile)', who:'17 million families making $228,000 to $743,000', base:5875.8, n:17.1e6, cur:23.9},
+    {id:'p80', name:'Upper middle (80th to 90th)', who:'19 million families making $158,000 to $228,000', base:3438.4, n:18.9e6, cur:20.2},
+    {id:'p50', name:'Middle (50th to 80th)', who:'57 million families making $77,000 to $158,000', base:5845.0, n:56.7e6, cur:15.2},
+    {id:'p0', name:'Bottom half', who:'94 million families making under $77,000', base:3239.7, n:93.5e6, cur:5.8}
+  ];
+  INCOME.forEach(function(g){g.min=-5;g.max=30;g.step=0.5;});
+  var ALL = WEALTH.concat(INCOME);
+  var vals = {}; ALL.forEach(function(g){vals[g.id]=0;});
+  var focus = null; // {btn, ids, label} while a narrow starting plan is on
+  var maxIncBase = 5875.8, maxWBase = 19600;
+
+  var PROGRAMS = [
+    {id:'m4a', name:'Single-payer health care (Medicare for All)', cost:1500, note:'The Congressional Budget Office estimated $1.5 to $3.0 trillion in added federal health spending in 2030, depending on the design. This uses the low end. Much of it would replace premiums and other costs that employers and households pay now.', src:'CBO, 2020', url:'https://cbo.gov/publication/56898'},
+    {id:'college', name:'Tuition-free public college', cost:58, note:'Georgetown University’s Center on Education and the Workforce estimated $58 billion in the first year to cover tuition for all students, counting both the federal and state shares.', src:'Georgetown CEW, 2020', url:'https://cew.georgetown.edu/resource/the-dollars-and-sense-of-free-college'},
+    {id:'ctc', name:'Expanded Child Tax Credit (2021 version, made permanent)', cost:160, note:'The Congressional Budget Office estimated $1.6 trillion over ten years (2022 to 2031), or about $160 billion a year.', src:'Peter G. Peterson Foundation, reporting CBO', url:'https://pgpf.org/article/what-are-the-costs-of-permanently-expanding-the-ctc-and-the-eitc'},
+    {id:'childcare', name:'Universal child care', cost:70, note:'Moody’s Analytics estimated about $70 billion a year for Senator Elizabeth Warren’s 2019 plan. Estimates for broader plans run higher.', src:'Moody’s Analytics, 2019', url:'https://www.warren.senate.gov/imo/media/doc/MoodysAnalysis_Zandi_UniversalChildCareAct_2019.pdf'},
+    {id:'deport', name:'Deporting one million people a year', cost:88, note:'The American Immigration Council, an immigrant advocacy group, estimated at least $88 billion a year.', src:'American Immigration Council, 2024', url:'https://www.americanimmigrationcouncil.org/research/mass-deportation'},
+    {id:'defense', name:'Raise defense spending to 5% of GDP', cost:500, note:'A $1.5 trillion defense budget would be about 5% of GDP, according to the Heritage Foundation. That is roughly $500 billion a year above the current budget of about $1 trillion.', src:'Heritage Foundation, 2026', url:'https://www.heritage.org/defense/report/president-trumps-potential-15-trillion-defense-budget'},
+    {id:'sstax', name:'End income taxes on Social Security benefits (a tax cut)', cost:150, note:'The Penn Wharton Budget Model estimated $1.5 trillion in lost revenue over ten years, or about $150 billion a year.', src:'Penn Wharton Budget Model, 2025', url:'https://budgetmodel.wharton.upenn.edu/p/2025-02-07-eliminating-income-taxes-on-social-security-benefits/'}
+  ];
+  var PROGDEFAULT = '';
+  var LEAKNOTE = {
+    0:'Everyone pays exactly what the formula says.',
+    15:'The rate economists Emmanuel Saez and Gabriel Zucman assumed when they scored Senator Elizabeth Warren’s wealth tax.',
+    45:'About what the Penn Wharton Budget Model’s central estimate implied for the same proposal.',
+    70:'About what Penn Wharton’s “extreme avoidance” case implied.'
+  };
+  function $(id){return document.getElementById(id);}
+  function money(b){ // b in $ billions
+    var s = b<0?'−':'', a=Math.abs(b);
+    if(a>=1000) return s+'$'+(a/1000).toFixed(2)+' trillion';
+    if(a>=10) return s+'$'+Math.round(a)+' billion';
+    if(a>0) return s+'$'+a.toFixed(1)+' billion';
+    return '$0';
+  }
+  function dollars(x){
+    var a=Math.abs(x);
+    if(a>=1e9) return '$'+(a/1e9).toFixed(1)+' billion';
+    if(a>=1e6) return '$'+(a/1e6).toFixed(1)+' million';
+    if(a>=1000) return '$'+(Math.round(a/10)*10).toLocaleString('en-US');
+    return '$'+Math.round(a);
+  }
+  function leakPct(){var r=document.querySelector('input[name=leak]:checked');return r?+r.value:0;}
+  function progCost(){if(!$('progOn').checked)return 0;var v=parseFloat($('customAmt').value);return (isFinite(v)&&v>0)?Math.min(v,6000):0;}
+  function defGoal(){return +document.querySelector('input[name=goal]:checked').value;}
+  function goal(){return defGoal()+progCost();}
+  function revenue(g){ // $ billions
+    var v=vals[g.id], raw=g.base*v/100;
+    if(g.leak && raw>0) raw*= (1-leakPct()/100);
+    return raw;
+  }
+  function perUnit(g){ return g.base*1e9*vals[g.id]/100/g.n; } // on paper
+
+  function buildRow(g, isWealth){
+    var el=document.createElement('div'); el.className='row'; el.id='row-'+g.id; el.style.setProperty('--c','var(--g-'+g.id+')');
+    var bw = Math.max(2, Math.round(100*g.base/(isWealth?maxWBase:maxIncBase)));
+    el.innerHTML =
+      '<h3>'+g.name+'<span class="tag">Not in this plan</span></h3><div class="rev num" id="rev-'+g.id+'">$0</div>'+
+      '<div class="who">'+g.who+'</div>'+
+      '<div class="base"><i style="width:'+(bw*0.45)+'%"></i><span class="num">'+(isWealth?'Wealth to tax: ':'Income to tax: ')+money(g.base)+(isWealth?'':' a year')+'</span></div>'+
+      '<div class="slide"><input type="range" id="s-'+g.id+'" min="'+(g.min||0)+'" max="'+g.max+'" step="'+g.step+'" value="0" aria-label="'+g.name+(isWealth?' yearly wealth tax, percent':' tax change, percentage points')+'"><output class="num" id="o-'+g.id+'" for="s-'+g.id+'"></output></div>'+
+      '<div class="effect num" id="e-'+g.id+'"></div><div class="warnline" id="w-'+g.id+'"></div>'+(g.note?'<div class="rownote">'+g.note+'</div>':'');
+    el.querySelector('input').addEventListener('input',function(e){vals[g.id]=+e.target.value; if(focus&&focus.ids.indexOf(g.id)<0) focus=null; render();});
+    return el;
+  }
+  WEALTH.forEach(function(g){$('wealthRows').appendChild(buildRow(g,true));});
+  INCOME.forEach(function(g){$('incomeRows').appendChild(buildRow(g,false));});
+
+  function render(){
+    var G=goal(), net=0, pos=0, parts=[];
+    ALL.forEach(function(g){
+      var r=revenue(g), v=vals[g.id], isW = g.cur===undefined;
+      net+=r; if(r>0) pos+=r; parts.push({g:g,r:r});
+      var rev=$('rev-'+g.id); rev.textContent=(r>0?'+':'')+money(r); rev.className='rev num'+(r<0?' neg':'');
+      $('s-'+g.id).value=v;
+      $('w-'+g.id).textContent = isW ? (v>8 ? 'This is above the top rates in major U.S. wealth tax proposals (up to 8%). At rates this high, fortunes shrink each year and avoidance grows, so the simple math overstates what would be collected.' : '') : (v>15 ? 'At increases this large, people change how they work, invest, and report income, so the simple math overstates what would be collected.' : '');
+      $('row-'+g.id).classList.toggle('dim', !!focus && focus.ids.indexOf(g.id)<0);
+      if(isW){
+        $('o-'+g.id).textContent=v.toFixed(1)+'% a year';
+        $('e-'+g.id).textContent = v>0 ? 'About '+dollars(perUnit(g))+' per '+g.unit+' each year, before avoidance.' : 'No wealth tax (current law).';
+      } else {
+        $('o-'+g.id).textContent=(v>0?'+':(v<0?'−':''))+Math.abs(v).toFixed(1)+' pts';
+        var nr=(g.cur+v).toFixed(1);
+        $('e-'+g.id).textContent = v===0 ? 'Pays '+g.cur.toFixed(1)+'% of income in federal taxes now.'
+          : 'Average federal tax rate goes from '+g.cur.toFixed(1)+'% to '+nr+'%. About '+dollars(perUnit(g))+(v>0?' more':' less')+' per family each year.';
+      }
+    });
+    $('leakNote').textContent=LEAKNOTE[leakPct()]||'';
+    ['p-bil','p-one'].forEach(function(b){$(b).setAttribute('aria-pressed', String(!!focus&&focus.btn===b));});
+    $('planNote').textContent = focus ? '“'+focus.label+'” is on, so the other groups are marked “Not in this plan.” Move one of their sliders or press Reset to bring them back.' : '';
+    // meter
+    $('net').textContent=money(net);
+    var st=$('status'), gap=G-net, pct=G>0?Math.round(100*net/G):0;
+    if(G<=0){st.className='status num short';st.textContent='Choose a deficit goal or add a program cost';}
+    else if(net>=G){st.className='status num done';st.textContent='Goal met, with '+money(net-G)+' to spare';}
+    else if(net<=0){st.className='status num short';st.textContent=money(G-net)+' still to find';}
+    else{st.className='status num short';st.textContent=pct+'% of goal. '+money(gap)+' still to find';}
+    var scale=Math.max(G,net,1), bar=$('bar'); bar.innerHTML='';
+    var shown=Math.max(net,0);
+    parts.forEach(function(p){
+      if(p.r<=0||pos<=0) return;
+      var s=document.createElement('span');
+      s.style.width=(100*(p.r/pos)*shown/scale)+'%';
+      s.style.background='var(--g-'+p.g.id+')';
+      s.title=p.g.name+': '+money(p.r);
+      bar.appendChild(s);
+    });
+    bar.setAttribute('aria-label','Raised '+money(net)+' of a '+money(G)+' goal');
+    $('target').style.left='calc('+(100*G/scale)+'% - 1px)';
+    $('capTarget').textContent='Goal: '+money(G)+((defGoal()>0&&progCost()>0)?' ('+money(defGoal())+' deficit + '+money(progCost())+' added)':'');
+    // mix
+    var mix=$('mix');
+    if(pos<=0){
+      mix.innerHTML='<p>Move a slider to start. Nothing is raised yet, so the full '+money(G)+' is still uncovered.</p>';
+    } else {
+      var by=function(ids){return parts.reduce(function(a,p){return a+(ids.indexOf(p.g.id)>-1&&p.r>0?p.r:0);},0);};
+      var bil=by(['bil']), rich=by(['w01','top01','p99']), mid=by(['p90','p80']), rest=by(['p50','p0']);
+      var sh=function(x){return Math.round(100*x/pos)+'%';};
+      var h='<p class="num"><strong>Of the '+money(pos)+' your plan raises:</strong> '+sh(bil)+' comes from billionaires, '+sh(rich)+' from the rest of the top 1% and wealthiest 0.1%, '+sh(mid)+' from the 80th to 99th percentile, and '+sh(rest)+' from the bottom 80%.</p>';
+      var cuts=pos-net;
+      if(cuts>0.05) h+='<p class="num">Your tax cuts give back '+money(cuts)+', so the net is '+money(net)+'.</p>';
+      var bilOnly=ALL.every(function(g){return g.id==='bil'||vals[g.id]===0;});
+      if(bilOnly && net<G) h+='<p class="num">Billionaires alone, at this rate, cover '+pct+'% of the goal. At the slider’s '+WEALTH[0].max+'% maximum they would cover '+Math.round(100*8400*(WEALTH[0].max/100)*(1-leakPct()/100)/G)+'%.</p>';
+      mix.innerHTML=h;
+    }
+  }
+
+  function setPlan(p,f){ALL.forEach(function(g){vals[g.id]=p[g.id]||0;});focus=f||null;render();}
+  $('p-bil').addEventListener('click',function(){setPlan({bil:5},{btn:'p-bil',ids:['bil'],label:'Billionaires only'});});
+  $('p-one').addEventListener('click',function(){setPlan({bil:3,w01:2,top01:5,p99:5},{btn:'p-one',ids:['bil','w01','top01','p99'],label:'Top 1% only'});});
+  $('p-broad').addEventListener('click',function(){setPlan({bil:2,w01:1,top01:5,p99:4,p90:3,p80:2,p50:2,p0:1});});
+  $('p-reset').addEventListener('click',function(){setPlan({});});
+  Array.prototype.forEach.call(document.querySelectorAll('input[name=goal],input[name=leak]'),function(r){
+    r.addEventListener('change',function(){render();});
+  });
+  PROGRAMS.forEach(function(pg){
+    var o=document.createElement('option'); o.value=pg.id;
+    o.textContent=pg.name+' (about '+money(pg.cost)+' a year)'; $('progPick').appendChild(o);
+  });
+  $('progOn').addEventListener('change',function(){$('progBox').hidden=!this.checked;render();});
+  function pickedProg(){var id=$('progPick').value;for(var i=0;i<PROGRAMS.length;i++){if(PROGRAMS[i].id===id)return PROGRAMS[i];}return null;}
+  $('progPick').addEventListener('change',function(){
+    var pg=pickedProg(), note=$('progNote');
+    if(pg){$('customAmt').value=pg.cost; note.innerHTML=pg.note+' <a href="'+pg.url+'">Source: '+pg.src+'</a>';}
+    else{note.textContent=PROGDEFAULT;}
+    render();
+  });
+  $('customAmt').addEventListener('input',function(){$('progPick').value='';$('progNote').textContent=PROGDEFAULT;render();});
+
+  $('copy').addEventListener('click',function(){
+    var G=goal(), net=0, lines=['My tax plan (Tax Gap Simulator)','Goal: '+money(G)+' per year. Wealth tax avoidance assumed: '+leakPct()+'%.'];
+    if(progCost()>0) lines.push('Goal includes '+money(progCost())+' for '+(pickedProg()?pickedProg().name:'a new program')+'.');
+    ALL.forEach(function(g){
+      var v=vals[g.id]; if(v===0) return; var r=revenue(g); net+=r;
+      lines.push('- '+g.name+': '+(g.cur===undefined? v.toFixed(1)+'% yearly wealth tax' : (v>0?'+':'')+v.toFixed(1)+' points on income')+' = '+money(r));
+    });
+    lines.push('Total: '+money(net)+(G>0?' ('+Math.round(100*net/G)+'% of goal)':''));
+    var text=lines.join('\n').replace(/−/g,'-'), msg=$('copied');
+    try{
+      navigator.clipboard.writeText(text).then(function(){msg.textContent='Copied.';},function(){msg.textContent='Copy was blocked. Select the summary above instead.';});
+    }catch(e){msg.textContent='Copy was blocked. Select the summary above instead.';}
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
